@@ -1,17 +1,6 @@
 # python3
 
 EPS = 1e-6
-PRECISION = 20
-
-class Equation:
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
-
-class Position:
-    def __init__(self, column, row):
-        self.column = column
-        self.row = row
 
 def ReadEquation():
     size = int(input())
@@ -21,54 +10,71 @@ def ReadEquation():
         line = list(map(float, input().split()))
         a.append(line[:size])
         b.append(line[size])
-    return Equation(a, b)
+    return a, b
 
-def SelectPivotElement(a, used_rows, used_columns):
-    # This algorithm selects the first free element.
-    # You'll need to improve it to pass the problem.
-    pivot_element = Position(0, 0)
-    while used_rows[pivot_element.row]:
-        pivot_element.row += 1
-    while used_columns[pivot_element.column]:
-        pivot_element.column += 1
-    return pivot_element
+def SolveEquation(a, b):
+    n = len(b)
+    x = [float(0) for i in range(n)]
 
-def SwapLines(a, b, used_rows, pivot_element):
-    a[pivot_element.column], a[pivot_element.row] = a[pivot_element.row], a[pivot_element.column]
-    b[pivot_element.column], b[pivot_element.row] = b[pivot_element.row], b[pivot_element.column]
-    used_rows[pivot_element.column], used_rows[pivot_element.row] = used_rows[pivot_element.row], used_rows[pivot_element.column]
-    pivot_element.row = pivot_element.column;
+    # Elimination
+    # a is a list (row) of lists (column) of floats containing each coefficient of x_0 to x_i
+    # b is a list of floats containing each constant b_0 to b_i
+    for k in range(n-1):
+        # the pivot value is the element at position k, k (i.e along the main diagonal on the k-th row)
 
-def ProcessPivotElement(a, b, pivot_element):
-    # Write your code here
-    pass
+        if abs(a[k][k]) < EPS:
+            # The pivot value is too small a number (may cause division by 'zero' overflow errors)
+            # iterate through the values below the pivot (same column, diff row) to find a value 
+            # larger than the pivot to swap the rows
+            for i in range(k+1, n):
 
-def MarkPivotElementUsed(pivot_element, used_rows, used_columns):
-    used_rows[pivot_element.row] = True
-    used_columns[pivot_element.column] = True
+                if abs(a[i][k]) > abs(a[k][k]):
+                    # swap the i-th and k-th rows (don't forget the constants!)
+                    a[i], a[k] = a[k], a[i]
+                    b[i], b[k] = b[k], b[i]
 
-def SolveEquation(equation):
-    a = equation.a
-    b = equation.b
-    size = len(a)
+        for i in range(k+1, n):
+            # iterate through the values below the pivot to zero out i.e. eliminate the column
+            # the value is already zero-ed and does not need to be multiplied by a factor
+            if a[i][k] == 0: continue
 
-    used_columns = [False] * size
-    used_rows = [False] * size
-    for step in range(size):
-        pivot_element = SelectPivotElement(a, used_rows, used_columns)
-        SwapLines(a, b, used_rows, pivot_element)
-        ProcessPivotElement(a, b, pivot_element)
-        MarkPivotElementUsed(pivot_element, used_rows, used_columns)
+            # find the factor to eliminate the element
+            factor = a[k][k] / a[i][k]
+            
+            # multiply all values of the row with the factor and subtract from the corresponding
+            # values of the pivot row in order to eliminate it
+            for j in range(k, n):
 
-    return b
+                a[i][j] = a[k][j] - a[i][j]*factor
+            
+            # don't forget the constants!
+            b[i] = b[k] - b[i]*factor
+    
+    #Back-substitution
+    # All the values below the main diagonal have been eliminated
+    # iteratively derive the solution by substituion
+    x[n-1] = b[n-1] / a[n-1][n-1]
+    
+    for i in range(n-2, -1, -1):
+        
+        sum_ax = 0
 
-def PrintColumn(column):
-    size = len(column)
-    for row in range(size):
-        print("%.20lf" % column[row])
+        for j in range(i+1, n):
+
+            sum_ax += a[i][j]*x[j]
+        
+        x[i] = (b[i] - sum_ax) / a[i][i]
+
+    return x
+
+
 
 if __name__ == "__main__":
-    equation = ReadEquation()
-    solution = SolveEquation(equation)
-    PrintColumn(solution)
+    a, b = ReadEquation()
+    
+    x = SolveEquation(a, b)
+    
+    print(' '.join(map(str, x)))
+
     exit(0)
+
